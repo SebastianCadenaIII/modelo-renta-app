@@ -93,9 +93,10 @@ else:
         }])
 
     # Validar que se haya capturado correctamente al menos una fila
-    if df_input.isnull().all(axis = 1).any():
-        st.warning('⚠️ Por favor, completa todos los campos antes de enviar.')
-        st.stop()
+    if 'df_input' in locals():
+        if df_input.isnull().all(axis = 1).any():
+            st.warning('⚠️ Por favor, completa todos los campos antes de enviar.')
+            st.stop()
 
 # --- PROCESAMIENTO SI HAY DATOS DE ENTRADA ---
 if 'df_input' in locals():
@@ -293,6 +294,7 @@ if 'df_input' in locals():
     fig2.update_layout(showlegend = True)
     
     st.plotly_chart(fig2, use_container_width = True)
+
 
 
 
