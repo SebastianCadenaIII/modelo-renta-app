@@ -92,6 +92,11 @@ else:
             'mapeo.UBICACION': ubicacion
         }])
 
+    # Validar que se haya capturado correctamente al menos una fila
+    if df_input.isnull().all(axis = 1).any():
+        st.warning('⚠️ Por favor, completa todos los campos antes de enviar.')
+        st.stop()
+
 # --- PROCESAMIENTO SI HAY DATOS DE ENTRADA ---
 if 'df_input' in locals():
 
@@ -125,7 +130,11 @@ if 'df_input' in locals():
     if df_joined is None:
         st.error('❌ No se puede hacer el cruce: faltan columnas clave en los datos.')
         st.stop()
-
+    
+    if 'PLAZA' not in df_joined.columns or 'LOCAL' not in df_joined.columns or 'mapeo.UBICACION' not in df_joined.columns:
+        st.error('❌ El cruce de datos no generó columnas clave. Verifica los campos ingresados.')
+        st.stop()
+        
     df = df_joined.drop_duplicates(subset = ['PLAZA', 'LOCAL', 'mapeo.UBICACION'], keep = 'first').copy()
     df['FECHA_INICIO'] = pd.to_datetime(df['FECHA_INICIO'], errors = 'coerce')
     df['FECHA_FIN'] = pd.to_datetime(df['FECHA_FIN'], errors = 'coerce')
@@ -284,6 +293,7 @@ if 'df_input' in locals():
     fig2.update_layout(showlegend = True)
     
     st.plotly_chart(fig2, use_container_width = True)
+
 
 
 
