@@ -119,7 +119,7 @@ if 'df_input' in locals():
         st.stop()
 
     st.info(f'✅ Cruce realizado usando: {merge_usado}')
-    df = df_joined.copy()
+df = df_joined.drop_duplicates(subset = ['PLAZA', 'LOCAL', 'mapeo.UBICACION'], keep = 'first').copy()
     df['FECHA_INICIO'] = pd.to_datetime(df['FECHA_INICIO'], errors = 'coerce')
     df['FECHA_FIN'] = pd.to_datetime(df['FECHA_FIN'], errors = 'coerce')
     df['GIRO'] = df['GIRO'].fillna('SIN CLASIFICAR')
@@ -170,13 +170,17 @@ if 'df_input' in locals():
     df['PREDICCIÓN_LOG'] = y_pred_log
     df['PREDICCIÓN_MXN_POR_M2'] = np.expm1(y_pred_log)
 
+    
     # --- VISUALIZACIÓN DE RESULTADOS ---
     st.subheader('📋 Resultados de la Predicción')
 
-    with st.expander('🔍 Ver tabla completa'):
-        st.dataframe(df.style.format({'PREDICCIÓN_MXN_POR_M2': '{:.2f}'}), height = 400)
+    columnas_mostrar = ['PLAZA', 'PORTFOLIO', 'LOCAL', 'NOMBRE', 'GIRO', 'GIRO CLUSTER', 'SUPERFICIE', 'RENTA', 'MXN_POR_M2', 'FECHA_INICIO', 'FECHA_FIN', 'mapeo.UBICACION', 'PREDICCIÓN_MXN_POR_M2']
+    columnas_presentes = [col for col in columnas_mostrar if col in df.columns]
+    df_vista = df[columnas_presentes].copy()
 
-    # --- DESCARGA ---
+    with st.expander('🔍 Ver tabla completa'):
+        st.dataframe(df_vista.style.format({'PREDICCIÓN_MXN_POR_M2': '{:.2f}'}), height = 400)
+# --- DESCARGA ---
     def convertir_csv(df):
         return df.to_csv(index = False).encode('utf-8')
 
@@ -276,4 +280,3 @@ if 'df_input' in locals():
     fig2.update_layout(showlegend = True)
     
     st.plotly_chart(fig2, use_container_width = True)
-
