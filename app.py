@@ -85,7 +85,6 @@ else:
 
 # --- PROCESAMIENTO SI HAY DATOS DE ENTRADA ---
 if 'df_input' in locals():
-    st.success('✅ Datos recibidos correctamente.')
 
     # --- CRUCE CON DATASET MAESTRO (ACTUALIZADO) ---
 
@@ -276,6 +275,7 @@ if 'df_input' in locals():
     fig2.update_layout(showlegend = True)
     
     st.plotly_chart(fig2, use_container_width = True)
+
 
 
 
