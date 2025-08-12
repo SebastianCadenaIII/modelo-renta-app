@@ -262,87 +262,59 @@ if 'df_input' in locals():
     else:
         st.info('ℹ️ No se genera gráfico porque solo hay una fila vigente.')
 
-    # --- GRÁFICO 2: BRECHA POR LOCAL EN PLAZA ESPECÍFICA ---
+    # --- GRÁFICO: Brecha por local (todos los puntos) ---
+
+    # Asegurar columnas base
+    fecha_actual = pd.Timestamp.today()
+    df['MESES_RESTANTES'] = ((df['FECHA_FIN'] - fecha_actual).dt.days / 30.44).clip(lower = 0)
     
-    import plotly.colors as pc
-    from plotly.colors import qualitative as qcolors
-    
-    # Calcular columnas necesarias si no existen
+    # Renta de mercado estimada por GIRO
     if 'RENTA_MERCADO' not in df.columns:
         mediana_por_giro = df.groupby('GIRO')['MXN_POR_M2'].median()
         df['RENTA_MERCADO'] = df['GIRO'].map(mediana_por_giro)
     
+    # Deltas
     df['delta_rent_pct'] = (df['MXN_POR_M2'] / df['RENTA_MERCADO'] - 1) * 100
     df['delta_pred_pct'] = (df['PREDICCIÓN_MXN_POR_M2'] / df['RENTA_MERCADO'] - 1) * 100
+    df['delta_gap'] = abs(df['delta_rent_pct'] - df['delta_pred_pct'])
     
-    # Detectar plaza automáticamente si solo hay una
-    plazas_unicas = df['PLAZA'].unique()
-    if len(plazas_unicas) == 1:
-        plaza_objetivo = plazas_unicas[0]
-    else:
-        plaza_objetivo = st.selectbox('Selecciona una plaza para el segundo gráfico:', sorted(plazas_unicas))
-    
-    # Filtrar por plaza
-    df_plaza = df[df['PLAZA'] == plaza_objetivo].copy()
-    df_vigentes = df_plaza[df_plaza['ESTA_VIGENTE'] == 1]
+    # Filtrar solo contratos vigentes
+    df_vigentes = df[df['ESTA_VIGENTE'] == 1].copy()
     
     if len(df_vigentes) > 0:
-        group = df_vigentes.groupby('LOCAL')
-        meses_restantes = group['MESES_RESTANTES'].mean()
-        renta_actual = group['MXN_POR_M2'].mean()
-        renta_pred = group['PREDICCIÓN_MXN_POR_M2'].mean()
-        renta_mercado = group['RENTA_MERCADO'].mean()
-        nombre_local = group['NOMBRE'].first()
-        giro_cluster = group['GIRO'].first()
+        # Colores por GIRO CLUSTER
+        import plotly.colors as pc
+        from plotly.colors import qualitative as qcolors
     
-        delta_real = (renta_actual / renta_mercado - 1) * 100
-        delta_pred = (renta_pred / renta_mercado - 1) * 100
-        delta_gap = abs(delta_real - delta_pred)
-    
-        df_gap = pd.DataFrame({
-            'LOCAL': renta_actual.index,
-            'NOMBRE': nombre_local,
-            'GIRO': giro_cluster,
-            'Meses restantes (promedio)': meses_restantes,
-            'Desempeño renta vs mercado (%)': delta_gap,
-            'delta_rent_pct': delta_real,
-            'delta_pred_pct': delta_pred
-        })
-    
-        # Colores
-        clusters = df_gap['GIRO'].unique()
+        clusters = df_vigentes['GIRO CLUSTER'].unique()
         palette = qcolors.Bold
-        color_discrete_map = {
-            c: palette[i % len(palette)] for i, c in enumerate(clusters)
-        }
+        color_discrete_map = {c: palette[i % len(palette)] for i, c in enumerate(clusters)}
     
-        fig3 = px.scatter(
-            df_gap,
-            x = 'Meses restantes (promedio)',
-            y = 'Desempeño renta vs mercado (%)',
+        fig4 = px.scatter(
+            df_vigentes,
+            x = 'MESES_RESTANTES',
+            y = 'delta_gap',
             hover_name = 'NOMBRE',
             hover_data = {
+                'PLAZA': True,
                 'LOCAL': True,
-                'GIRO': True,
+                'GIRO CLUSTER': True,
                 'delta_rent_pct': ':.2f',
                 'delta_pred_pct': ':.2f'
             },
-            color = 'GIRO',
-            title = f'📍 Brecha renta real–predicha vs mercado – {plaza_objetivo}',
+            color = 'GIRO CLUSTER',
+            color_discrete_map = color_discrete_map,
+            title = '🔍 Brecha por Local – Real vs Predicho vs Mercado',
             labels = {
-                'Meses restantes (promedio)': 'Meses hasta vencimiento (promedio por local)',
-                'Desempeño renta vs mercado (%)': 'Brecha real – predicha (%)',
+                'MESES_RESTANTES': 'Meses hasta vencimiento',
+                'delta_gap': 'Brecha real – predicha (%)',
                 'delta_rent_pct': 'Delta renta real (%)',
                 'delta_pred_pct': 'Delta renta predicha (%)'
-            },
-            color_discrete_map = color_discrete_map
+            }
         )
     
-        fig3.add_hline(y = 0, line_dash = 'dash', line_color = 'gray')
-        fig3.add_vline(x = 24, line_dash = 'dash', line_color = 'gray')
-        fig3.update_traces(marker = dict(size = 9))
-        fig3.update_layout(showlegend = True)
-        st.plotly_chart(fig3, use_container_width = True)
-    else:
-        st.info('ℹ️ No hay contratos vigentes para graficar brechas en esta plaza.')
-
+        fig4.add_hline(y = 0, line_dash = 'dash', line_color = 'gray')
+        fig4.add_vline(x = 24, line_dash = 'dash', line_color = 'gray')
+        fig4.update_traces(marker = dict(size = 9))
+        fig4.update_layout(showlegend = True)
+        st.plotly_chart(fig4, use_container_width = True)
