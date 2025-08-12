@@ -20,14 +20,13 @@ if password_input != PASSWORD:
     st.stop()
 
 # --- REINICIO SEGURO USANDO QUERY PARAMS ---
-query_params = st.experimental_get_query_params()
-if 'reset' in query_params:
+if st.query_params.get('reset') == '1':
     st.session_state.clear()
-    st.experimental_set_query_params()  # limpiar la URL
+    st.query_params.clear()
     st.stop()
 
 if st.sidebar.button('🔄 Reiniciar aplicación'):
-    st.experimental_set_query_params(reset = '1')
+    st.query_params['reset'] = '1'
     st.stop()
 
 # --- CARGA DE MODELO Y PIPELINE ---
@@ -296,6 +295,7 @@ if 'df_input' in locals():
     fig2.update_layout(showlegend = True)
     
     st.plotly_chart(fig2, use_container_width = True)
+
 
 
 
