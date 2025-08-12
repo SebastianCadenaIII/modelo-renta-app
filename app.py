@@ -212,41 +212,8 @@ if 'df_input' in locals():
     df_vigentes = df[df['ESTA_VIGENTE'] == 1].copy()
     df_vigentes['RENTA_MERCADO'] = df_vigentes['MXN_POR_M2'].median()
     
-    # Si solo hay una fila → gráfico individual
-    if len(df_vigentes) == 1:
-        fila = df_vigentes.iloc[0]
-        delta = 1 - (fila['PREDICCIÓN_MXN_POR_M2'] / fila['MXN_POR_M2']) if fila['MXN_POR_M2'] > 0 else 0
-        meses = fila['MESES_RESTANTES']
-    
-        fig2 = px.scatter(
-            x = [meses],
-            y = [delta],
-            text = [f'{delta:.2%}'],
-            labels = {
-                'x': 'Meses hasta vencimiento',
-                'y': 'Delta PRX (1 - modelo / real)'
-            },
-            title = f'📊 Predicción individual – {fila["PLAZA"]}'
-        )
-    
-        fig2.update_traces(
-            mode = 'markers+text',
-            marker = dict(
-                size = 28,
-                color = '#1f77b4',
-                line = dict(width = 2, color = 'white')
-            ),
-            textposition = 'top center',
-            textfont = dict(size = 16)
-        )
-    
-        fig2.add_hline(y = 0, line_dash = 'dash', line_color = 'gray')
-        fig2.add_vline(x = 24, line_dash = 'dash', line_color = 'gray')
-        fig2.update_layout(showlegend = False)
-        st.plotly_chart(fig2, use_container_width = True)
-    
-    # Si hay más de una fila → gráfico agrupado
-    else:
+    # Solo generar gráfico si hay más de una fila
+    if len(df_vigentes) > 1:
         group = df_vigentes.groupby('PLAZA')
     
         df_plaza = group.agg({
@@ -292,3 +259,5 @@ if 'df_input' in locals():
         fig2.update_traces(marker = dict(line = dict(width = 1, color = 'DarkSlateGrey')))
         fig2.update_layout(showlegend = True)
         st.plotly_chart(fig2, use_container_width = True)
+    else:
+        st.info('ℹ️ No se genera gráfico porque solo hay una fila vigente.')
