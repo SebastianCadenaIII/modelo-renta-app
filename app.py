@@ -247,14 +247,18 @@ if 'df_input' in locals():
     # Agrupación por PLAZA
     group = df_vigentes.groupby('PLAZA')
     
-    df_plaza = pd.DataFrame({
-        'Meses Para Vencimiento Promedio Ponderado': group.apply(vencimiento_ponderado),
-        'Delta PRX ponderado (1 - modelo / real)': group.apply(delta_prx_ponderado),
-        'Contratos vigentes': group.size(),
-        '$/m2 Actual (promedio)': group.apply(prx_real),
-        '$/m2 Modelo (promedio)': group.apply(prx_model),
-        'PORTFOLIO': group.first()['PORTFOLIO']
-    }).reset_index()
+    # Crear base vacía con índice correcto
+    df_plaza = pd.DataFrame(index = group.size().index)
+    
+    # Calcular métricas personalizadas
+    df_plaza['Meses Para Vencimiento Promedio Ponderado'] = group.apply(vencimiento_ponderado)
+    df_plaza['Delta PRX ponderado (1 - modelo / real)'] = group.apply(delta_prx_ponderado)
+    df_plaza['$/m2 Actual (promedio)'] = group.apply(prx_real)
+    df_plaza['$/m2 Modelo (promedio)'] = group.apply(prx_model)
+    df_plaza['Contratos vigentes'] = group.size()
+    df_plaza['PORTFOLIO'] = group['PORTFOLIO'].first()
+    
+    df_plaza = df_plaza.reset_index()
     
     # Asignar color: CONQUER = azul, otros = naranja
     df_plaza['COLOR_GROUP'] = np.where(df_plaza['PORTFOLIO'] == 'CONQUER', 'CONQUER', 'OTHER')
@@ -293,3 +297,4 @@ if 'df_input' in locals():
     fig2.update_layout(showlegend = True)
     
     st.plotly_chart(fig2, use_container_width = True)
+
