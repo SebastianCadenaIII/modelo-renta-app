@@ -87,9 +87,13 @@ else:
 if 'df_input' in locals():
     st.success('✅ Datos recibidos correctamente.')
 
+    cols_to_drop = ['MXN_POR_M2', 'FECHA_INICIO', 'FECHA_FIN', 'PLAZA', 'LOCAL', 'NOMBRE', 'GIRO', 'SUPERFICIE']
+    existing_cols = [col for col in cols_to_drop if col in df_maestro.columns]
+    df_maestro_base = df_maestro.drop(columns = existing_cols)
+
     # --- CRUCE CON DATASET MAESTRO ---
     df_joined = df_input.merge(
-        df_maestro.drop(columns = ['MXN_POR_M2', 'FECHA_INICIO', 'FECHA_FIN', 'PLAZA', 'LOCAL', 'NOMBRE', 'GIRO', 'SUPERFICIE']),
+       df_maestro_base,
         on = ['mapeo.UBICACION', 'PLAZA'],
         how = 'left'
     )
@@ -97,7 +101,7 @@ if 'df_input' in locals():
     # Si no hubo match por PLAZA + UBICACION, intentar solo por UBICACION
     if df_joined.isnull().any().any():
         df_joined = df_input.merge(
-            df_maestro.drop(columns = ['MXN_POR_M2', 'FECHA_INICIO', 'FECHA_FIN', 'PLAZA', 'LOCAL', 'NOMBRE', 'GIRO', 'SUPERFICIE']),
+            df_maestro_base,
             on = ['mapeo.UBICACION'],
             how = 'left'
         )
@@ -241,3 +245,4 @@ if 'df_input' in locals():
     fig2.update_layout(showlegend = True)
     
     st.plotly_chart(fig2, use_container_width = True)
+
