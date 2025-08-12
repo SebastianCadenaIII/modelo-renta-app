@@ -87,24 +87,32 @@ else:
 if 'df_input' in locals():
     st.success('✅ Datos recibidos correctamente.')
 
+    # --- CRUCE CON DATASET MAESTRO ---
+
     cols_to_drop = ['MXN_POR_M2', 'FECHA_INICIO', 'FECHA_FIN', 'PLAZA', 'LOCAL', 'NOMBRE', 'GIRO', 'SUPERFICIE']
     existing_cols = [col for col in cols_to_drop if col in df_maestro.columns]
     df_maestro_base = df_maestro.drop(columns = existing_cols)
-
-    # --- CRUCE CON DATASET MAESTRO ---
-    df_joined = df_input.merge(
-       df_maestro_base,
-        on = ['mapeo.UBICACION', 'PLAZA'],
-        how = 'left'
-    )
-
-    # Si no hubo match por PLAZA + UBICACION, intentar solo por UBICACION
-    if df_joined.isnull().any().any():
-        df_joined = df_input.merge(
-            df_maestro_base,
-            on = ['mapeo.UBICACION'],
-            how = 'left'
-        )
+    
+    # Definir claves de cruce
+    merge_keys_1 = ['mapeo.UBICACION', 'PLAZA']
+    merge_keys_2 = ['mapeo.UBICACION']
+    
+    # Intentar primer cruce con ambas claves
+    if all(col in df_input.columns for col in merge_keys_1) and all(col in df_maestro_base.columns for col in merge_keys_1):
+        df_joined = df_input.merge(df_maestro_base, on = merge_keys_1, how = 'left')
+        merge_usado = 'mapeo.UBICACION + PLAZA'
+    
+    # Si falla, intentar con una sola clave
+    elif all(col in df_input.columns for col in merge_keys_2) and all(col in df_maestro_base.columns for col in merge_keys_2):
+        df_joined = df_input.merge(df_maestro_base, on = merge_keys_2, how = 'left')
+        merge_usado = 'solo mapeo.UBICACION'
+    
+    # Si no hay forma de hacer merge, detener
+    else:
+        st.error('❌ No se puede hacer el cruce: faltan columnas clave en los datos.')
+        st.stop()
+    
+    st.info(f'✅ Cruce realizado usando: {merge_usado}')
 
     df = df_joined.copy()
     df['FECHA_INICIO'] = pd.to_datetime(df['FECHA_INICIO'], errors = 'coerce')
@@ -245,4 +253,5 @@ if 'df_input' in locals():
     fig2.update_layout(showlegend = True)
     
     st.plotly_chart(fig2, use_container_width = True)
+
 
