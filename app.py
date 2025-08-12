@@ -203,16 +203,36 @@ if 'df_input' in locals():
         file_name = 'predicciones_renta.csv',
         mime = 'text/csv'
     )
-
-    # --- NUEVO GRÁFICO: RENDIMIENTO POR PLAZA ---
-
-    # Calcular MESES_RESTANTES
+    
+    # --- NUEVO GRÁFICO: POR PLAZA Y POR LOCAL (ADAPTATIVO) ---
+    
+    # Asegurar columna base
     fecha_actual = pd.Timestamp.today()
     df['MESES_RESTANTES'] = ((df['FECHA_FIN'] - fecha_actual).dt.days / 30.44).clip(lower = 0)
-    df_vigentes = df[df['ESTA_VIGENTE'] == 1].copy()
-    df_vigentes['RENTA_MERCADO'] = df_vigentes['MXN_POR_M2'].median()
     
-    # Solo generar gráfico si hay más de una fila
+    # Renta de mercado estimada por GIRO (si no existe)
+    if 'RENTA_MERCADO' not in df.columns:
+        mediana_por_giro = df.groupby('GIRO')['MXN_POR_M2'].median()
+        df['RENTA_MERCADO'] = df['GIRO'].map(mediana_por_giro)
+    
+    # Deltas
+    df['delta_rent_pct'] = (df['MXN_POR_M2'] / df['RENTA_MERCADO'] - 1) * 100
+    df['delta_pred_pct'] = (df['PREDICCIÓN_MXN_POR_M2'] / df['RENTA_MERCADO'] - 1) * 100
+    df['delta_gap'] = abs(df['delta_rent_pct'] - df['delta_pred_pct'])
+    
+    # Filtrar contratos vigentes
+    df_vigentes = df[df['ESTA_VIGENTE'] == 1].copy()
+    df_vigentes['RENTA_MERCADO'] = df_vigentes['RENTA_MERCADO'].fillna(df_vigentes['MXN_POR_M2'].median())
+    
+    # Paleta por GIRO CLUSTER
+    import plotly.colors as pc
+    from plotly.colors import qualitative as qcolors
+    
+    clusters = df_vigentes['GIRO CLUSTER'].unique()
+    palette = qcolors.Bold
+    color_discrete_map = {c: palette[i % len(palette)] for i, c in enumerate(clusters)}
+    
+    # --- 1. GRÁFICO POR PLAZA (agrupado) ---
     if len(df_vigentes) > 1:
         group = df_vigentes.groupby('PLAZA')
     
@@ -227,17 +247,12 @@ if 'df_input' in locals():
         df_plaza['Delta PRX ponderado (1 - modelo / real)'] = 1 - (df_plaza['PREDICCIÓN_MXN_POR_M2'] / df_plaza['MXN_POR_M2'])
         df_plaza['COLOR_GROUP'] = np.where(df_plaza['PORTFOLIO'] == 'CONQUER', 'CONQUER', 'OTHER')
     
-        color_map_custom = {
-            'CONQUER': '#1f77b4',
-            'OTHER': '#ff7f0e'
-        }
-    
-        fig2 = px.scatter(
+        fig_plaza = px.scatter(
             df_plaza,
             x = 'MESES_RESTANTES',
             y = 'Delta PRX ponderado (1 - modelo / real)',
             color = 'COLOR_GROUP',
-            color_discrete_map = color_map_custom,
+            color_discrete_map = color_discrete_map,
             hover_name = 'PLAZA',
             hover_data = {
                 'PORTFOLIO': True,
@@ -247,50 +262,19 @@ if 'df_input' in locals():
             title = '📊 Rendimiento por Plaza - Comparación PRX Estimado vs Real (Ponderado)',
             labels = {
                 'MESES_RESTANTES': 'Meses ponderado hasta vencimiento',
-                'Delta PRX ponderado (1 - modelo / real)': 'Delta PRX ponderado (1 - modelo / real)',
-                'COLOR_GROUP': 'PORTFOLIO agrupado',
-                'MXN_POR_M2': 'PRX Real Promedio',
-                'PREDICCIÓN_MXN_POR_M2': 'PRX Estimado Promedio'
+                'Delta PRX ponderado (1 - modelo / real)': 'Delta PRX ponderado (1 - modelo / real)'
             }
         )
     
-        fig2.add_hline(y = 0, line_dash = 'dash', line_color = 'gray')
-        fig2.add_vline(x = 24, line_dash = 'dash', line_color = 'gray')
-        fig2.update_traces(marker = dict(line = dict(width = 1, color = 'DarkSlateGrey')))
-        fig2.update_layout(showlegend = True)
-        st.plotly_chart(fig2, use_container_width = True)
-    else:
-        st.info('ℹ️ No se genera gráfico porque solo hay una fila vigente.')
-
-    # --- GRÁFICO: Brecha por local (todos los puntos) ---
-
-    # Asegurar columnas base
-    fecha_actual = pd.Timestamp.today()
-    df['MESES_RESTANTES'] = ((df['FECHA_FIN'] - fecha_actual).dt.days / 30.44).clip(lower = 0)
+        fig_plaza.add_hline(y = 0, line_dash = 'dash', line_color = 'gray')
+        fig_plaza.add_vline(x = 24, line_dash = 'dash', line_color = 'gray')
+        fig_plaza.update_traces(marker = dict(line = dict(width = 1, color = 'DarkSlateGrey')))
+        fig_plaza.update_layout(showlegend = True)
+        st.plotly_chart(fig_plaza, use_container_width = True)
     
-    # Renta de mercado estimada por GIRO
-    if 'RENTA_MERCADO' not in df.columns:
-        mediana_por_giro = df.groupby('GIRO')['MXN_POR_M2'].median()
-        df['RENTA_MERCADO'] = df['GIRO'].map(mediana_por_giro)
-    
-    # Deltas
-    df['delta_rent_pct'] = (df['MXN_POR_M2'] / df['RENTA_MERCADO'] - 1) * 100
-    df['delta_pred_pct'] = (df['PREDICCIÓN_MXN_POR_M2'] / df['RENTA_MERCADO'] - 1) * 100
-    df['delta_gap'] = abs(df['delta_rent_pct'] - df['delta_pred_pct'])
-    
-    # Filtrar solo contratos vigentes
-    df_vigentes = df[df['ESTA_VIGENTE'] == 1].copy()
-    
-    if len(df_vigentes) > 0:
-        # Colores por GIRO CLUSTER
-        import plotly.colors as pc
-        from plotly.colors import qualitative as qcolors
-    
-        clusters = df_vigentes['GIRO CLUSTER'].unique()
-        palette = qcolors.Bold
-        color_discrete_map = {c: palette[i % len(palette)] for i, c in enumerate(clusters)}
-    
-        fig4 = px.scatter(
+    # --- 2. GRÁFICO POR LOCAL (sin agrupar) ---
+    if len(df_vigentes) >= 1:
+        fig_local = px.scatter(
             df_vigentes,
             x = 'MESES_RESTANTES',
             y = 'delta_gap',
@@ -307,14 +291,12 @@ if 'df_input' in locals():
             title = '🔍 Brecha por Local – Real vs Predicho vs Mercado',
             labels = {
                 'MESES_RESTANTES': 'Meses hasta vencimiento',
-                'delta_gap': 'Brecha real – predicha (%)',
-                'delta_rent_pct': 'Delta renta real (%)',
-                'delta_pred_pct': 'Delta renta predicha (%)'
+                'delta_gap': 'Brecha real – predicha (%)'
             }
         )
     
-        fig4.add_hline(y = 0, line_dash = 'dash', line_color = 'gray')
-        fig4.add_vline(x = 24, line_dash = 'dash', line_color = 'gray')
-        fig4.update_traces(marker = dict(size = 9))
-        fig4.update_layout(showlegend = True)
-        st.plotly_chart(fig4, use_container_width = True)
+        fig_local.add_hline(y = 0, line_dash = 'dash', line_color = 'gray')
+        fig_local.add_vline(x = 24, line_dash = 'dash', line_color = 'gray')
+        fig_local.update_traces(marker = dict(size = 10))
+        fig_local.update_layout(showlegend = True)
+        st.plotly_chart(fig_local, use_container_width = True)
