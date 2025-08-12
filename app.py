@@ -161,10 +161,14 @@ if 'df_input' in locals():
     y_pred_log = modelo.predict(X_proc)
     df['PREDICCIÓN_LOG'] = y_pred_log
     df['PREDICCIÓN_MXN_POR_M2'] = np.expm1(y_pred_log)
-
     
     # --- VISUALIZACIÓN DE RESULTADOS ---
     st.subheader('📋 Resultados de la Predicción')
+
+    # Mostrar resultado directo si es una sola fila
+    if len(df) == 1:
+        renta_predicha = df['PREDICCIÓN_MXN_POR_M2'].iloc[0]
+        st.success(f'💡 Predicción estimada: ${renta_predicha:,.2f} MXN por m²')
 
     columnas_mostrar = ['PLAZA', 'PORTFOLIO', 'LOCAL', 'NOMBRE', 'GIRO', 'GIRO CLUSTER', 'SUPERFICIE', 'RENTA', 'MXN_POR_M2', 'FECHA_INICIO', 'FECHA_FIN', 'mapeo.UBICACION', 'PREDICCIÓN_MXN_POR_M2']
     columnas_presentes = [col for col in columnas_mostrar if col in df.columns]
@@ -172,7 +176,8 @@ if 'df_input' in locals():
 
     with st.expander('🔍 Ver tabla completa'):
         st.dataframe(df_vista.style.format({'PREDICCIÓN_MXN_POR_M2': '{:.2f}'}), height = 400)
-# --- DESCARGA ---
+        
+    # --- DESCARGA ---
     def convertir_csv(df):
         return df.to_csv(index = False).encode('utf-8')
 
@@ -272,5 +277,6 @@ if 'df_input' in locals():
     fig2.update_layout(showlegend = True)
     
     st.plotly_chart(fig2, use_container_width = True)
+
 
 
