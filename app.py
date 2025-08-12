@@ -20,11 +20,9 @@ if password_input != PASSWORD:
     st.stop()
 
 # --- BOTÓN PARA REINICIAR LA APLICACIÓN ---
-col_refresh = st.sidebar.columns(1)[0]
-with col_refresh:
-    if st.button('🔄 Reiniciar aplicación'):
-        st.session_state.clear()
-        st.experimental_rerun()
+if st.sidebar.button('🔄 Reiniciar aplicación'):
+    st.session_state.clear()
+    st.experimental_rerun()
 
 # --- CARGA DE MODELO Y PIPELINE ---
 @st.cache_resource
