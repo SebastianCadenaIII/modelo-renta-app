@@ -253,7 +253,7 @@ if 'df_input' in locals():
         'Contratos vigentes': group.size(),
         '$/m2 Actual (promedio)': group.apply(prx_real),
         '$/m2 Modelo (promedio)': group.apply(prx_model),
-        'PORTFOLIO': group['PORTFOLIO'].first()
+        'PORTFOLIO': group.first()['PORTFOLIO']
     }).reset_index()
     
     # Asignar color: CONQUER = azul, otros = naranja
@@ -293,16 +293,3 @@ if 'df_input' in locals():
     fig2.update_layout(showlegend = True)
     
     st.plotly_chart(fig2, use_container_width = True)
-
-
-
-
-
-
-
-
-
-
-
-
-
