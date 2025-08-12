@@ -220,7 +220,7 @@ if 'df_input' in locals():
         fig2 = px.scatter(
             x = [fila['MESES_RESTANTES']],
             y = [delta],
-            text = [fila['NOMBRE']],
+            text = [f'{delta:.2%}'],
             labels = {
                 'x': 'Meses hasta vencimiento',
                 'y': 'Delta PRX (1 - modelo / real)'
@@ -280,3 +280,4 @@ if 'df_input' in locals():
         fig2.update_traces(marker = dict(line = dict(width = 1, color = 'DarkSlateGrey')))
         fig2.update_layout(showlegend = True)
         st.plotly_chart(fig2, use_container_width = True)
+
