@@ -19,6 +19,13 @@ if password_input != PASSWORD:
     st.warning('🔒 Ingresa la clave correcta para acceder a la aplicación.')
     st.stop()
 
+# --- BOTÓN PARA REINICIAR LA APLICACIÓN ---
+col_refresh = st.sidebar.columns(1)[0]
+with col_refresh:
+    if st.button('🔄 Reiniciar aplicación'):
+        st.session_state.clear()
+        st.experimental_rerun()
+
 # --- CARGA DE MODELO Y PIPELINE ---
 @st.cache_resource
 def load_models():
@@ -275,6 +282,7 @@ if 'df_input' in locals():
     fig2.update_layout(showlegend = True)
     
     st.plotly_chart(fig2, use_container_width = True)
+
 
 
 
