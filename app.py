@@ -210,37 +210,37 @@ if 'df_input' in locals():
     fecha_actual = pd.Timestamp.today()
     df['MESES_RESTANTES'] = ((df['FECHA_FIN'] - fecha_actual).dt.days / 30.44).clip(lower = 0)
     
-    # Filtrar contratos vigentes
+    # Filtrar solo contratos vigentes
     df_vigentes = df[df['ESTA_VIGENTE'] == 1].copy()
+    df_vigentes['RENTA_MERCADO'] = df_vigentes['MXN_POR_M2'].median()
     
-    # Renta de mercado global (solo referencia)
-    renta_mercado_global = df_vigentes['MXN_POR_M2'].median()
-    df_vigentes['RENTA_MERCADO'] = renta_mercado_global
-    
-    # Si solo hay una fila, mostrar gráfico individual
+    # Si solo hay una fila: gráfico individual sin agrupación
     if len(df_vigentes) == 1:
         fila = df_vigentes.iloc[0]
+        delta_individual = 1 - (fila['PREDICCIÓN_MXN_POR_M2'] / fila['MXN_POR_M2']) if fila['MXN_POR_M2'] > 0 else 0
+    
         fig2 = px.scatter(
             x = [fila['MESES_RESTANTES']],
-            y = [1 - (fila['PREDICCIÓN_MXN_POR_M2'] / fila['MXN_POR_M2']) if fila['MXN_POR_M2'] > 0 else 0],
+            y = [delta_individual],
             text = [fila['NOMBRE']],
             labels = {
                 'x': 'Meses hasta vencimiento',
                 'y': 'Delta PRX (1 - modelo / real)'
             },
-            title = f"📊 Predicción para {fila['PLAZA']}",
+            title = f"📊 Predicción individual – {fila['PLAZA']}"
         )
         fig2.update_traces(marker = dict(size = 12, color = '#1f77b4'), textposition = 'top center')
         fig2.add_hline(y = 0, line_dash = 'dash', line_color = 'gray')
         fig2.add_vline(x = 24, line_dash = 'dash', line_color = 'gray')
+        fig2.update_layout(showlegend = False)
         st.plotly_chart(fig2, use_container_width = True)
     
-    # Si hay varias filas → agrupar por PLAZA
+    # Si hay varias filas: gráfico agrupado por PLAZA
     else:
         # --- Funciones auxiliares ---
         def vencimiento_ponderado(grp):
-            sup = grp['SUPERFICIE'].sum()
-            return (grp['MESES_RESTANTES'] * grp['SUPERFICIE']).sum() / sup if sup > 0 else 0
+            total_superficie = grp['SUPERFICIE'].sum()
+            return (grp['MESES_RESTANTES'] * grp['SUPERFICIE']).sum() / total_superficie if total_superficie > 0 else 0
     
         def delta_prx_ponderado(grp):
             sup = grp['SUPERFICIE'].sum()
@@ -256,17 +256,14 @@ if 'df_input' in locals():
             sup = grp['SUPERFICIE'].sum()
             return (grp['PREDICCIÓN_MXN_POR_M2'] * grp['SUPERFICIE']).sum() / sup if sup > 0 else np.nan
     
-        # Agrupación por PLAZA
         group = df_vigentes.groupby('PLAZA')
     
-        df_plaza = pd.DataFrame({
-            'Meses Para Vencimiento Promedio Ponderado': group.apply(vencimiento_ponderado),
-            'Delta PRX ponderado (1 - modelo / real)': group.apply(delta_prx_ponderado),
-            'Contratos vigentes': group.size(),
-            '$/m2 Actual (promedio)': group.apply(prx_real),
-            '$/m2 Modelo (promedio)': group.apply(prx_model),
-            'PORTFOLIO': group['PORTFOLIO'].first()
-        }).reset_index()
+        df_plaza = group.apply(vencimiento_ponderado).reset_index(name = 'Meses Para Vencimiento Promedio Ponderado')
+        df_plaza = df_plaza.merge(group.apply(delta_prx_ponderado).reset_index(name = 'Delta PRX ponderado (1 - modelo / real)'), on = 'PLAZA')
+        df_plaza = df_plaza.merge(group.size().reset_index(name = 'Contratos vigentes'), on = 'PLAZA')
+        df_plaza = df_plaza.merge(group.apply(prx_real).reset_index(name = '$/m2 Actual (promedio)'), on = 'PLAZA')
+        df_plaza = df_plaza.merge(group.apply(prx_model).reset_index(name = '$/m2 Modelo (promedio)'), on = 'PLAZA')
+        df_plaza = df_plaza.merge(group['PORTFOLIO'].first().reset_index(name = 'PORTFOLIO'), on = 'PLAZA')
     
         df_plaza['COLOR_GROUP'] = np.where(df_plaza['PORTFOLIO'] == 'CONQUER', 'CONQUER', 'OTHER')
         color_map_custom = {
@@ -301,5 +298,4 @@ if 'df_input' in locals():
         fig2.add_vline(x = 24, line_dash = 'dash', line_color = 'gray')
         fig2.update_traces(marker = dict(line = dict(width = 1, color = 'DarkSlateGrey')))
         fig2.update_layout(showlegend = True)
-    
         st.plotly_chart(fig2, use_container_width = True)
