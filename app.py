@@ -205,92 +205,87 @@ if 'df_input' in locals():
     )
 
     # --- NUEVO GRÁFICO: RENDIMIENTO POR PLAZA ---
-
+    
     # Asegurar columna de meses restantes
     fecha_actual = pd.Timestamp.today()
     df['MESES_RESTANTES'] = ((df['FECHA_FIN'] - fecha_actual).dt.days / 30.44).clip(lower = 0)
     
-    # Filtrar solo contratos vigentes
+    # Filtrar contratos vigentes
     df_vigentes = df[df['ESTA_VIGENTE'] == 1].copy()
     
-    # Renta de mercado global
+    # Renta de mercado global (solo referencia)
     renta_mercado_global = df_vigentes['MXN_POR_M2'].median()
     df_vigentes['RENTA_MERCADO'] = renta_mercado_global
     
-    # --- Funciones de agregación por plaza ---
-    def vencimiento_ponderado(grp):
-        total_superficie = grp['SUPERFICIE'].sum()
-        if total_superficie == 0:
-            return 0
-        return (grp['MESES_RESTANTES'] * grp['SUPERFICIE']).sum() / total_superficie
+    # Si solo hay una fila, no tiene sentido agrupar y graficar
+    if len(df_vigentes['PLAZA'].unique()) < 2:
+        st.info('ℹ️ No se puede generar el gráfico de rendimiento por plaza con menos de dos plazas.')
+    else:
+        # --- Funciones auxiliares ---
+        def vencimiento_ponderado(grp):
+            sup = grp['SUPERFICIE'].sum()
+            return (grp['MESES_RESTANTES'] * grp['SUPERFICIE']).sum() / sup if sup > 0 else 0
     
-    def delta_prx_ponderado(grp):
-        total_superficie = grp['SUPERFICIE'].sum()
-        if total_superficie == 0:
-            return np.nan
-        prx_real = (grp['MXN_POR_M2'] * grp['SUPERFICIE']).sum() / total_superficie
-        prx_model = (grp['PREDICCIÓN_MXN_POR_M2'] * grp['SUPERFICIE']).sum() / total_superficie
-        return 1 - (prx_model / prx_real) if prx_real > 0 else np.nan
+        def delta_prx_ponderado(grp):
+            sup = grp['SUPERFICIE'].sum()
+            prx_real = (grp['MXN_POR_M2'] * grp['SUPERFICIE']).sum() / sup if sup > 0 else np.nan
+            prx_model = (grp['PREDICCIÓN_MXN_POR_M2'] * grp['SUPERFICIE']).sum() / sup if sup > 0 else np.nan
+            return 1 - (prx_model / prx_real) if prx_real > 0 else np.nan
     
-    def prx_real(grp):
-        total_superficie = grp['SUPERFICIE'].sum()
-        if total_superficie == 0:
-            return np.nan
-        return (grp['MXN_POR_M2'] * grp['SUPERFICIE']).sum() / total_superficie
+        def prx_real(grp):
+            sup = grp['SUPERFICIE'].sum()
+            return (grp['MXN_POR_M2'] * grp['SUPERFICIE']).sum() / sup if sup > 0 else np.nan
     
-    def prx_model(grp):
-        total_superficie = grp['SUPERFICIE'].sum()
-        if total_superficie == 0:
-            return np.nan
-        return (grp['PREDICCIÓN_MXN_POR_M2'] * grp['SUPERFICIE']).sum() / total_superficie
+        def prx_model(grp):
+            sup = grp['SUPERFICIE'].sum()
+            return (grp['PREDICCIÓN_MXN_POR_M2'] * grp['SUPERFICIE']).sum() / sup if sup > 0 else np.nan
     
-    # Agrupación
-    group = df_vigentes.groupby('PLAZA')
+        # Agrupación por PLAZA
+        group = df_vigentes.groupby('PLAZA')
     
-    df_plaza = pd.DataFrame({
-        'Meses Para Vencimiento Promedio Ponderado': group.apply(vencimiento_ponderado),
-        'Delta PRX ponderado (1 - modelo / real)': group.apply(delta_prx_ponderado),
-        'Contratos vigentes': group.size(),
-        '$/m2 Actual (promedio)': group.apply(prx_real),
-        '$/m2 Modelo (promedio)': group.apply(prx_model),
-        'PORTFOLIO': group['PORTFOLIO'].first()
-    }).reset_index()
+        df_plaza = pd.DataFrame({
+            'Meses Para Vencimiento Promedio Ponderado': group.apply(vencimiento_ponderado),
+            'Delta PRX ponderado (1 - modelo / real)': group.apply(delta_prx_ponderado),
+            'Contratos vigentes': group.size(),
+            '$/m2 Actual (promedio)': group.apply(prx_real),
+            '$/m2 Modelo (promedio)': group.apply(prx_model),
+            'PORTFOLIO': group['PORTFOLIO'].first()
+        }).reset_index()
     
-    # Asignar color: CONQUER = azul, otros = naranja
-    df_plaza['COLOR_GROUP'] = np.where(df_plaza['PORTFOLIO'] == 'CONQUER', 'CONQUER', 'OTHER')
-    color_map_custom = {
-        'CONQUER': '#1f77b4',
-        'OTHER': '#ff7f0e'
-    }
-    
-    # --- D. Plotly ---
-    fig2 = px.scatter(
-        df_plaza,
-        x = 'Meses Para Vencimiento Promedio Ponderado',
-        y = 'Delta PRX ponderado (1 - modelo / real)',
-        color = 'COLOR_GROUP',
-        color_discrete_map = color_map_custom,
-        hover_name = 'PLAZA',
-        hover_data = {
-            'PORTFOLIO': True,
-            '$/m2 Actual (promedio)': ':.2f',
-            '$/m2 Modelo (promedio)': ':.2f',
-            'Contratos vigentes': True
-        },
-        title = '📊 Rendimiento por Plaza - Comparación PRX Estimado vs Real (Ponderado)',
-        labels = {
-            'Meses Para Vencimiento Promedio Ponderado': 'Meses ponderado hasta vencimiento',
-            'Delta PRX ponderado (1 - modelo / real)': 'Delta PRX ponderado (1 - modelo / real)',
-            'COLOR_GROUP': 'PORTFOLIO agrupado',
-            '$/m2 Actual (promedio)': 'PRX Real Promedio',
-            '$/m2 Modelo (promedio)': 'PRX Estimado Promedio'
+        # Asignar color: CONQUER = azul, otros = naranja
+        df_plaza['COLOR_GROUP'] = np.where(df_plaza['PORTFOLIO'] == 'CONQUER', 'CONQUER', 'OTHER')
+        color_map_custom = {
+            'CONQUER': '#1f77b4',
+            'OTHER': '#ff7f0e'
         }
-    )
     
-    fig2.add_hline(y = 0, line_dash = 'dash', line_color = 'gray')
-    fig2.add_vline(x = 24, line_dash = 'dash', line_color = 'gray')
-    fig2.update_traces(marker = dict(line = dict(width = 1, color = 'DarkSlateGrey')))
-    fig2.update_layout(showlegend = True)
+        # Gráfico Plotly
+        fig2 = px.scatter(
+            df_plaza,
+            x = 'Meses Para Vencimiento Promedio Ponderado',
+            y = 'Delta PRX ponderado (1 - modelo / real)',
+            color = 'COLOR_GROUP',
+            color_discrete_map = color_map_custom,
+            hover_name = 'PLAZA',
+            hover_data = {
+                'PORTFOLIO': True,
+                '$/m2 Actual (promedio)': ':.2f',
+                '$/m2 Modelo (promedio)': ':.2f',
+                'Contratos vigentes': True
+            },
+            title = '📊 Rendimiento por Plaza - Comparación PRX Estimado vs Real (Ponderado)',
+            labels = {
+                'Meses Para Vencimiento Promedio Ponderado': 'Meses ponderado hasta vencimiento',
+                'Delta PRX ponderado (1 - modelo / real)': 'Delta PRX ponderado (1 - modelo / real)',
+                'COLOR_GROUP': 'PORTFOLIO agrupado',
+                '$/m2 Actual (promedio)': 'PRX Real Promedio',
+                '$/m2 Modelo (promedio)': 'PRX Estimado Promedio'
+            }
+        )
     
-    st.plotly_chart(fig2, use_container_width = True)
-
+        fig2.add_hline(y = 0, line_dash = 'dash', line_color = 'gray')
+        fig2.add_vline(x = 24, line_dash = 'dash', line_color = 'gray')
+        fig2.update_traces(marker = dict(line = dict(width = 1, color = 'DarkSlateGrey')))
+        fig2.update_layout(showlegend = True)
+    
+        st.plotly_chart(fig2, use_container_width = True)
