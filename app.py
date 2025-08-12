@@ -20,12 +20,12 @@ if password_input != PASSWORD:
     st.stop()
 
 # --- REINICIO SEGURO USANDO QUERY PARAMS ---
-if st.sidebar.button('🔄 Reiniciar aplicación'):
-    keys_to_clear = ['df_input']
-    for key in keys_to_clear:
-        if key in st.session_state:
-            del st.session_state[key]
-    st.experimental_rerun()
+# if st.sidebar.button('🔄 Reiniciar aplicación'):
+#     keys_to_clear = ['df_input']
+#     for key in keys_to_clear:
+#         if key in st.session_state:
+#             del st.session_state[key]
+#     st.experimental_rerun()
 
 # --- CARGA DE MODELO Y PIPELINE ---
 @st.cache_resource
@@ -293,6 +293,7 @@ if 'df_input' in locals():
     fig2.update_layout(showlegend = True)
     
     st.plotly_chart(fig2, use_container_width = True)
+
 
 
 
