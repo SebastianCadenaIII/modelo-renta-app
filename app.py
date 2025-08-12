@@ -293,7 +293,7 @@ if 'df_input' in locals():
         renta_pred = group['PREDICCIÓN_MXN_POR_M2'].mean()
         renta_mercado = group['RENTA_MERCADO'].mean()
         nombre_local = group['NOMBRE'].first()
-        giro_cluster = group['GIRO CLUSTER'].first()
+        giro_cluster = group['GIRO'].first()
     
         delta_real = (renta_actual / renta_mercado - 1) * 100
         delta_pred = (renta_pred / renta_mercado - 1) * 100
@@ -302,7 +302,7 @@ if 'df_input' in locals():
         df_gap = pd.DataFrame({
             'LOCAL': renta_actual.index,
             'NOMBRE': nombre_local,
-            'GIRO CLUSTER': giro_cluster,
+            'GIRO': giro_cluster,
             'Meses restantes (promedio)': meses_restantes,
             'Desempeño renta vs mercado (%)': delta_gap,
             'delta_rent_pct': delta_real,
@@ -310,7 +310,7 @@ if 'df_input' in locals():
         })
     
         # Colores
-        clusters = df_gap['GIRO CLUSTER'].unique()
+        clusters = df_gap['GIRO'].unique()
         palette = qcolors.Bold
         color_discrete_map = {
             c: palette[i % len(palette)] for i, c in enumerate(clusters)
@@ -323,11 +323,11 @@ if 'df_input' in locals():
             hover_name = 'NOMBRE',
             hover_data = {
                 'LOCAL': True,
-                'GIRO CLUSTER': True,
+                'GIRO': True,
                 'delta_rent_pct': ':.2f',
                 'delta_pred_pct': ':.2f'
             },
-            color = 'GIRO CLUSTER',
+            color = 'GIRO',
             title = f'📍 Brecha renta real–predicha vs mercado – {plaza_objetivo}',
             labels = {
                 'Meses restantes (promedio)': 'Meses hasta vencimiento (promedio por local)',
@@ -345,3 +345,4 @@ if 'df_input' in locals():
         st.plotly_chart(fig3, use_container_width = True)
     else:
         st.info('ℹ️ No hay contratos vigentes para graficar brechas en esta plaza.')
+
