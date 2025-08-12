@@ -236,19 +236,17 @@ if 'df_input' in locals():
         sup = grp['SUPERFICIE'].sum()
         return (grp['PREDICCIÓN_MXN_POR_M2'] * grp['SUPERFICIE']).sum() / sup if sup > 0 else np.nan
     
-    # Agrupar por PLAZA
+    # Agrupar por PLAZA y calcular métricas directamente
     group = df_vigentes.groupby('PLAZA')
     
-    # Calcular métricas y construir DataFrame
-    df_plaza = pd.DataFrame(index = group.size().index)
-    df_plaza['Meses Para Vencimiento Promedio Ponderado'] = group.apply(vencimiento_ponderado)
-    df_plaza['Delta PRX ponderado (1 - modelo / real)'] = group.apply(delta_prx_ponderado)
-    df_plaza['$/m2 Actual (promedio)'] = group.apply(prx_real)
-    df_plaza['$/m2 Modelo (promedio)'] = group.apply(prx_model)
-    df_plaza['Contratos vigentes'] = group.size()
-    df_plaza['PORTFOLIO'] = group['PORTFOLIO'].first()
-    
-    df_plaza = df_plaza.reset_index()
+    df_plaza = pd.DataFrame({
+        'Meses Para Vencimiento Promedio Ponderado': group.apply(vencimiento_ponderado).values,
+        'Delta PRX ponderado (1 - modelo / real)': group.apply(delta_prx_ponderado).values,
+        '$/m2 Actual (promedio)': group.apply(prx_real).values,
+        '$/m2 Modelo (promedio)': group.apply(prx_model).values,
+        'Contratos vigentes': group.size().values,
+        'PORTFOLIO': group['PORTFOLIO'].first().values
+    }, index = group.size().index).reset_index()
     
     # Asignar colores
     df_plaza['COLOR_GROUP'] = np.where(df_plaza['PORTFOLIO'] == 'CONQUER', 'CONQUER', 'OTHER')
