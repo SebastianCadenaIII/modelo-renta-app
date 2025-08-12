@@ -270,7 +270,7 @@ if 'df_input' in locals():
         fig_plaza.add_vline(x = 24, line_dash = 'dash', line_color = 'gray')
         fig_plaza.update_traces(marker = dict(line = dict(width = 1, color = 'DarkSlateGrey')))
         fig_plaza.update_layout(showlegend = True)
-        st.plotly_chart(fig_plaza)
+        st.plotly_chart(fig_plaza, use_container_width = True)
 
     st.write(f'🎯 Número de contratos vigentes: {len(df_vigentes)}')
     
@@ -301,5 +301,6 @@ if 'df_input' in locals():
         fig_local.add_vline(x = 24, line_dash = 'dash', line_color = 'gray')
         fig_local.update_traces(marker = dict(size = 10))
         fig_local.update_layout(showlegend = True)
-        st.plotly_chart(fig_local)
+        st.plotly_chart(fig_local, use_container_width = True)
+
 
