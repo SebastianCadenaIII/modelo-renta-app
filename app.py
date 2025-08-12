@@ -87,34 +87,39 @@ else:
 if 'df_input' in locals():
     st.success('✅ Datos recibidos correctamente.')
 
-    # --- CRUCE CON DATASET MAESTRO ---
+    # --- CRUCE CON DATASET MAESTRO (ACTUALIZADO) ---
 
-    cols_to_drop = ['MXN_POR_M2', 'FECHA_INICIO', 'FECHA_FIN', 'PLAZA', 'LOCAL', 'NOMBRE', 'GIRO', 'SUPERFICIE']
+    # --- CRUCE INTELIGENTE CON DATASET MAESTRO ---
+    cols_to_drop = ['MXN_POR_M2', 'FECHA_INICIO', 'FECHA_FIN', 'LOCAL', 'NOMBRE', 'GIRO', 'SUPERFICIE']
     existing_cols = [col for col in cols_to_drop if col in df_maestro.columns]
     df_maestro_base = df_maestro.drop(columns = existing_cols)
-    
-    # Definir claves de cruce
-    merge_keys_1 = ['mapeo.UBICACION', 'PLAZA']
-    merge_keys_2 = ['mapeo.UBICACION']
-    
-    # Intentar primer cruce con ambas claves
-    if all(col in df_input.columns for col in merge_keys_1) and all(col in df_maestro_base.columns for col in merge_keys_1):
-        df_joined = df_input.merge(df_maestro_base, on = merge_keys_1, how = 'left')
-        merge_usado = 'mapeo.UBICACION + PLAZA'
-    
-    # Si falla, intentar con una sola clave
-    elif all(col in df_input.columns for col in merge_keys_2) and all(col in df_maestro_base.columns for col in merge_keys_2):
-        df_joined = df_input.merge(df_maestro_base, on = merge_keys_2, how = 'left')
-        merge_usado = 'solo mapeo.UBICACION'
-    
-    # Si no hay forma de hacer merge, detener
-    else:
+
+    df_joined = None
+    merge_usado = None
+
+    if 'PLAZA' in df_input.columns and 'mapeo.UBICACION' not in df_input.columns:
+        if 'PLAZA' in df_maestro_base.columns:
+            df_joined = df_input.merge(df_maestro_base.drop_duplicates(subset = ['PLAZA']), on = ['PLAZA'], how = 'left')
+            merge_usado = 'PLAZA'
+    elif all(col in df_input.columns for col in ['PLAZA', 'mapeo.UBICACION']):
+        if all(col in df_maestro_base.columns for col in ['PLAZA', 'mapeo.UBICACION']):
+            df_joined = df_input.merge(df_maestro_base, on = ['PLAZA', 'mapeo.UBICACION'], how = 'left')
+            if df_joined.isnull().any().any():
+                df_joined = df_input.merge(df_maestro_base.drop_duplicates(subset = ['mapeo.UBICACION']), on = ['mapeo.UBICACION'], how = 'left')
+                merge_usado = 'solo mapeo.UBICACION (fallback)'
+            else:
+                merge_usado = 'PLAZA + mapeo.UBICACION'
+    elif 'mapeo.UBICACION' in df_input.columns:
+        if 'mapeo.UBICACION' in df_maestro_base.columns:
+            df_joined = df_input.merge(df_maestro_base.drop_duplicates(subset = ['mapeo.UBICACION']), on = ['mapeo.UBICACION'], how = 'left')
+            merge_usado = 'solo mapeo.UBICACION'
+
+    if df_joined is None:
         st.error('❌ No se puede hacer el cruce: faltan columnas clave en los datos.')
         st.stop()
-    
-    st.info(f'✅ Cruce realizado usando: {merge_usado}')
 
-    df = df_joined.copy()
+    st.info(f'✅ Cruce realizado usando: {merge_usado}')
+df = df_joined.copy()
     df['FECHA_INICIO'] = pd.to_datetime(df['FECHA_INICIO'], errors = 'coerce')
     df['FECHA_FIN'] = pd.to_datetime(df['FECHA_FIN'], errors = 'coerce')
     df['GIRO'] = df['GIRO'].fillna('SIN CLASIFICAR')
@@ -127,6 +132,7 @@ if 'df_input' in locals():
     df['ES_KIOSKO'] = (df['GIRO'].str.upper().str.strip() == 'KIOSKOS').astype(int)
     df['VINTAGE_INICIO'] = df['FECHA_INICIO'].dt.strftime('%Y%m').astype(int)
     df['VINTAGE_FIN'] = df['FECHA_FIN'].dt.strftime('%Y%m').astype(int)
+    df['EXPIRA_24M'] = (df['FECHA_FIN'] <= (pd.Timestamp.today() + DateOffset(months = 24))).astype(int)
 
     # Clasificación por tamaño
     def clasificar_tamano(m2):
@@ -270,6 +276,3 @@ if 'df_input' in locals():
     fig2.update_layout(showlegend = True)
     
     st.plotly_chart(fig2, use_container_width = True)
-
-
-
