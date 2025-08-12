@@ -205,7 +205,7 @@ if 'df_input' in locals():
     )
 
     # --- NUEVO GRÁFICO: RENDIMIENTO POR PLAZA ---
-    
+
     # Asegurar columna de meses restantes
     fecha_actual = pd.Timestamp.today()
     df['MESES_RESTANTES'] = ((df['FECHA_FIN'] - fecha_actual).dt.days / 30.44).clip(lower = 0)
@@ -217,9 +217,25 @@ if 'df_input' in locals():
     renta_mercado_global = df_vigentes['MXN_POR_M2'].median()
     df_vigentes['RENTA_MERCADO'] = renta_mercado_global
     
-    # Si solo hay una fila, no tiene sentido agrupar y graficar
-    if len(df_vigentes['PLAZA'].unique()) < 2:
-        st.info('ℹ️ No se puede generar el gráfico de rendimiento por plaza con menos de dos plazas.')
+    # Si solo hay una fila, mostrar gráfico individual
+    if len(df_vigentes) == 1:
+        fila = df_vigentes.iloc[0]
+        fig2 = px.scatter(
+            x = [fila['MESES_RESTANTES']],
+            y = [1 - (fila['PREDICCIÓN_MXN_POR_M2'] / fila['MXN_POR_M2']) if fila['MXN_POR_M2'] > 0 else 0],
+            text = [fila['NOMBRE']],
+            labels = {
+                'x': 'Meses hasta vencimiento',
+                'y': 'Delta PRX (1 - modelo / real)'
+            },
+            title = f"📊 Predicción para {fila['PLAZA']}",
+        )
+        fig2.update_traces(marker = dict(size = 12, color = '#1f77b4'), textposition = 'top center')
+        fig2.add_hline(y = 0, line_dash = 'dash', line_color = 'gray')
+        fig2.add_vline(x = 24, line_dash = 'dash', line_color = 'gray')
+        st.plotly_chart(fig2, use_container_width = True)
+    
+    # Si hay varias filas → agrupar por PLAZA
     else:
         # --- Funciones auxiliares ---
         def vencimiento_ponderado(grp):
@@ -252,14 +268,12 @@ if 'df_input' in locals():
             'PORTFOLIO': group['PORTFOLIO'].first()
         }).reset_index()
     
-        # Asignar color: CONQUER = azul, otros = naranja
         df_plaza['COLOR_GROUP'] = np.where(df_plaza['PORTFOLIO'] == 'CONQUER', 'CONQUER', 'OTHER')
         color_map_custom = {
             'CONQUER': '#1f77b4',
             'OTHER': '#ff7f0e'
         }
     
-        # Gráfico Plotly
         fig2 = px.scatter(
             df_plaza,
             x = 'Meses Para Vencimiento Promedio Ponderado',
