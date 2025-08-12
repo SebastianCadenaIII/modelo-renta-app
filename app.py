@@ -221,7 +221,7 @@ if 'df_input' in locals():
     df['delta_gap'] = abs(df['delta_rent_pct'] - df['delta_pred_pct'])
     
     # Filtrar contratos vigentes
-    df_vigentes = df[df['ESTA_VIGENTE'] == 1].copy()
+    df_vigentes = df.copy()  # sin filtrar por vigencia
     df_vigentes['RENTA_MERCADO'] = df_vigentes['RENTA_MERCADO'].fillna(df_vigentes['MXN_POR_M2'].median())
     
     # Paleta por GIRO CLUSTER
@@ -302,5 +302,6 @@ if 'df_input' in locals():
         fig_local.update_traces(marker = dict(size = 10))
         fig_local.update_layout(showlegend = True)
         st.plotly_chart(fig_local, use_container_width = True)
+
 
 
