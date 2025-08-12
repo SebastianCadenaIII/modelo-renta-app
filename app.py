@@ -118,7 +118,6 @@ if 'df_input' in locals():
         st.error('❌ No se puede hacer el cruce: faltan columnas clave en los datos.')
         st.stop()
 
-    st.info(f'✅ Cruce realizado usando: {merge_usado}')
     df = df_joined.drop_duplicates(subset = ['PLAZA', 'LOCAL', 'mapeo.UBICACION'], keep = 'first').copy()
     df['FECHA_INICIO'] = pd.to_datetime(df['FECHA_INICIO'], errors = 'coerce')
     df['FECHA_FIN'] = pd.to_datetime(df['FECHA_FIN'], errors = 'coerce')
@@ -277,6 +276,7 @@ if 'df_input' in locals():
     fig2.update_layout(showlegend = True)
     
     st.plotly_chart(fig2, use_container_width = True)
+
 
 
 
