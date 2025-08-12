@@ -206,28 +206,26 @@ if 'df_input' in locals():
 
     # --- NUEVO GRÁFICO: RENDIMIENTO POR PLAZA ---
 
-    # Asegurar columna de meses restantes
+    # Calcular MESES_RESTANTES
     fecha_actual = pd.Timestamp.today()
     df['MESES_RESTANTES'] = ((df['FECHA_FIN'] - fecha_actual).dt.days / 30.44).clip(lower = 0)
-    
-    # Filtrar solo contratos vigentes
     df_vigentes = df[df['ESTA_VIGENTE'] == 1].copy()
     df_vigentes['RENTA_MERCADO'] = df_vigentes['MXN_POR_M2'].median()
     
-    # Si solo hay una fila: gráfico individual sin agrupación
+    # Si solo hay una fila
     if len(df_vigentes) == 1:
         fila = df_vigentes.iloc[0]
-        delta_individual = 1 - (fila['PREDICCIÓN_MXN_POR_M2'] / fila['MXN_POR_M2']) if fila['MXN_POR_M2'] > 0 else 0
+        delta = 1 - (fila['PREDICCIÓN_MXN_POR_M2'] / fila['MXN_POR_M2']) if fila['MXN_POR_M2'] > 0 else 0
     
         fig2 = px.scatter(
             x = [fila['MESES_RESTANTES']],
-            y = [delta_individual],
+            y = [delta],
             text = [fila['NOMBRE']],
             labels = {
                 'x': 'Meses hasta vencimiento',
                 'y': 'Delta PRX (1 - modelo / real)'
             },
-            title = f"📊 Predicción individual – {fila['PLAZA']}"
+            title = f'📊 Predicción individual – {fila["PLAZA"]}'
         )
         fig2.update_traces(marker = dict(size = 12, color = '#1f77b4'), textposition = 'top center')
         fig2.add_hline(y = 0, line_dash = 'dash', line_color = 'gray')
@@ -235,37 +233,21 @@ if 'df_input' in locals():
         fig2.update_layout(showlegend = False)
         st.plotly_chart(fig2, use_container_width = True)
     
-    # Si hay varias filas: gráfico agrupado por PLAZA
+    # Si hay más de una fila
     else:
-        # --- Funciones auxiliares ---
-        def vencimiento_ponderado(grp):
-            total_superficie = grp['SUPERFICIE'].sum()
-            return (grp['MESES_RESTANTES'] * grp['SUPERFICIE']).sum() / total_superficie if total_superficie > 0 else 0
-    
-        def delta_prx_ponderado(grp):
-            sup = grp['SUPERFICIE'].sum()
-            prx_real = (grp['MXN_POR_M2'] * grp['SUPERFICIE']).sum() / sup if sup > 0 else np.nan
-            prx_model = (grp['PREDICCIÓN_MXN_POR_M2'] * grp['SUPERFICIE']).sum() / sup if sup > 0 else np.nan
-            return 1 - (prx_model / prx_real) if prx_real > 0 else np.nan
-    
-        def prx_real(grp):
-            sup = grp['SUPERFICIE'].sum()
-            return (grp['MXN_POR_M2'] * grp['SUPERFICIE']).sum() / sup if sup > 0 else np.nan
-    
-        def prx_model(grp):
-            sup = grp['SUPERFICIE'].sum()
-            return (grp['PREDICCIÓN_MXN_POR_M2'] * grp['SUPERFICIE']).sum() / sup if sup > 0 else np.nan
-    
         group = df_vigentes.groupby('PLAZA')
     
-        df_plaza = group.apply(vencimiento_ponderado).reset_index(name = 'Meses Para Vencimiento Promedio Ponderado')
-        df_plaza = df_plaza.merge(group.apply(delta_prx_ponderado).reset_index(name = 'Delta PRX ponderado (1 - modelo / real)'), on = 'PLAZA')
-        df_plaza = df_plaza.merge(group.size().reset_index(name = 'Contratos vigentes'), on = 'PLAZA')
-        df_plaza = df_plaza.merge(group.apply(prx_real).reset_index(name = '$/m2 Actual (promedio)'), on = 'PLAZA')
-        df_plaza = df_plaza.merge(group.apply(prx_model).reset_index(name = '$/m2 Modelo (promedio)'), on = 'PLAZA')
-        df_plaza = df_plaza.merge(group['PORTFOLIO'].first().reset_index(name = 'PORTFOLIO'), on = 'PLAZA')
+        df_plaza = group.agg({
+            'SUPERFICIE': 'sum',
+            'MESES_RESTANTES': lambda x: np.average(x, weights = df_vigentes.loc[x.index, 'SUPERFICIE']),
+            'MXN_POR_M2': lambda x: np.average(x, weights = df_vigentes.loc[x.index, 'SUPERFICIE']),
+            'PREDICCIÓN_MXN_POR_M2': lambda x: np.average(x, weights = df_vigentes.loc[x.index, 'SUPERFICIE']),
+            'PORTFOLIO': 'first'
+        }).reset_index()
     
+        df_plaza['Delta PRX ponderado (1 - modelo / real)'] = 1 - (df_plaza['PREDICCIÓN_MXN_POR_M2'] / df_plaza['MXN_POR_M2'])
         df_plaza['COLOR_GROUP'] = np.where(df_plaza['PORTFOLIO'] == 'CONQUER', 'CONQUER', 'OTHER')
+    
         color_map_custom = {
             'CONQUER': '#1f77b4',
             'OTHER': '#ff7f0e'
@@ -273,24 +255,23 @@ if 'df_input' in locals():
     
         fig2 = px.scatter(
             df_plaza,
-            x = 'Meses Para Vencimiento Promedio Ponderado',
+            x = 'MESES_RESTANTES',
             y = 'Delta PRX ponderado (1 - modelo / real)',
             color = 'COLOR_GROUP',
             color_discrete_map = color_map_custom,
             hover_name = 'PLAZA',
             hover_data = {
                 'PORTFOLIO': True,
-                '$/m2 Actual (promedio)': ':.2f',
-                '$/m2 Modelo (promedio)': ':.2f',
-                'Contratos vigentes': True
+                'MXN_POR_M2': ':.2f',
+                'PREDICCIÓN_MXN_POR_M2': ':.2f'
             },
             title = '📊 Rendimiento por Plaza - Comparación PRX Estimado vs Real (Ponderado)',
             labels = {
-                'Meses Para Vencimiento Promedio Ponderado': 'Meses ponderado hasta vencimiento',
+                'MESES_RESTANTES': 'Meses ponderado hasta vencimiento',
                 'Delta PRX ponderado (1 - modelo / real)': 'Delta PRX ponderado (1 - modelo / real)',
                 'COLOR_GROUP': 'PORTFOLIO agrupado',
-                '$/m2 Actual (promedio)': 'PRX Real Promedio',
-                '$/m2 Modelo (promedio)': 'PRX Estimado Promedio'
+                'MXN_POR_M2': 'PRX Real Promedio',
+                'PREDICCIÓN_MXN_POR_M2': 'PRX Estimado Promedio'
             }
         )
     
