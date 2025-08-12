@@ -147,21 +147,13 @@ if 'df_input' in locals():
 
     df['TAMANO_LOCAL'] = df['SUPERFICIE'].apply(clasificar_tamano)
 
-    # --- DEBUG: Mostrar columnas antes de aplicar pipeline ---
-    st.subheader('🧪 Diagnóstico previo al pipeline')
-    
-    st.write(f'Número de columnas en df: {df.shape[1]}')
-    st.write('Columnas disponibles en df:')
-    st.write(df.columns.tolist())
-    
-    # Si el pipeline tiene columnas esperadas explícitas
+    # Validar columnas requeridas (sin mostrar)
     if hasattr(pipeline, 'feature_names_in_'):
         expected_cols = set(pipeline.feature_names_in_)
         actual_cols = set(df.columns)
         missing_cols = expected_cols - actual_cols
     
         if missing_cols:
-            st.error(f'❌ Faltan columnas requeridas por el pipeline: {missing_cols}')
             st.stop()
 
     # --- PREDICCIÓN ---
@@ -280,4 +272,5 @@ if 'df_input' in locals():
     fig2.update_layout(showlegend = True)
     
     st.plotly_chart(fig2, use_container_width = True)
+
 
