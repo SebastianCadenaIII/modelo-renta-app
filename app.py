@@ -45,6 +45,13 @@ def load_dataset_maestro():
 
 df_maestro = load_dataset_maestro()
 
+# --- CARGA DE CATALOGO ---
+@st.cache_data
+def load_cat_giro():
+    return pd.read_csv('cat_giro.csv')
+
+cat_giro = load_cat_giro()
+
 # --- FORMULARIO / ARCHIVO DE ENTRADA ---
 st.title('📈 Predicción de Renta por Metro Cuadrado')
 
@@ -64,7 +71,7 @@ else:
         col1, col2, col3 = st.columns(3)
         with col1:
             plaza = st.selectbox('PLAZA', sorted(df_maestro['PLAZA'].dropna().unique()))
-            giro = st.selectbox('GIRO', sorted(df_maestro['GIRO'].dropna().unique()))
+            giro = st.selectbox('GIRO', sorted(cat_giro['GIRO'].dropna().unique()))
         with col2:
             local = st.text_input('LOCAL (ej. A101)', value = 'A101').upper()
             superficie = st.number_input('SUPERFICIE', min_value = 1.0, step = 1.0)
@@ -230,6 +237,7 @@ if 'df_input' in locals():
     
     clusters = df_vigentes['GIRO CLUSTER'].unique()
     palette = qcolors.Bold
+    clusters = sorted([c for c in df_vigentes['GIRO CLUSTER'].dropna().unique()])
     color_discrete_map = {c: palette[i % len(palette)] for i, c in enumerate(clusters)}
     
     # --- 1. GRÁFICO POR PLAZA (agrupado) ---
@@ -300,6 +308,7 @@ if 'df_input' in locals():
         fig_local.update_traces(marker = dict(size = 10))
         fig_local.update_layout(showlegend = True)
         st.plotly_chart(fig_local, use_container_width = True)
+
 
 
 
