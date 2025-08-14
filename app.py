@@ -193,7 +193,7 @@ if 'df_input' in locals():
         renta_predicha = df['PREDICCIÓN_MXN_POR_M2'].iloc[0]
         st.success(f'💡 Predicción estimada: ${renta_predicha:,.2f} MXN por m²')
 
-    columnas_mostrar = ['PLAZA', 'PORTFOLIO', 'LOCAL', 'NOMBRE', 'GIRO', 'GIRO CLUSTER', 'SUPERFICIE', 'RENTA', 'MXN_POR_M2', 'FECHA_INICIO', 'FECHA_FIN', 'mapeo.UBICACION', 'PREDICCIÓN_MXN_POR_M2']
+    columnas_mostrar = ['PLAZA', 'PORTFOLIO', 'LOCAL', 'NOMBRE', 'GIRO', 'SUPERFICIE', 'RENTA', 'MXN_POR_M2', 'FECHA_INICIO', 'FECHA_FIN', 'mapeo.UBICACION', 'PREDICCIÓN_MXN_POR_M2']
     columnas_presentes = [col for col in columnas_mostrar if col in df.columns]
     df_vista = df[columnas_presentes].copy()
 
@@ -231,13 +231,12 @@ if 'df_input' in locals():
     df_vigentes = df.copy()  # sin filtrar por vigencia
     df_vigentes['RENTA_MERCADO'] = df_vigentes['RENTA_MERCADO'].fillna(df_vigentes['MXN_POR_M2'].median())
     
-    # Paleta por GIRO CLUSTER
+    # Paleta por GIRO
     import plotly.colors as pc
     from plotly.colors import qualitative as qcolors
     
-    clusters = df_vigentes['GIRO CLUSTER'].unique()
     palette = qcolors.Bold
-    clusters = sorted([c for c in df_vigentes['GIRO CLUSTER'].dropna().unique()])
+    clusters = sorted([c for c in df_vigentes['GIRO'].dropna().unique()])
     color_discrete_map = {c: palette[i % len(palette)] for i, c in enumerate(clusters)}
     
     # --- 1. GRÁFICO POR PLAZA (agrupado) ---
@@ -290,11 +289,11 @@ if 'df_input' in locals():
             hover_data = {
                 'PLAZA': True,
                 'LOCAL': True,
-                'GIRO CLUSTER': True,
+                'GIRO': True,
                 'delta_rent_pct': ':.2f',
                 'delta_pred_pct': ':.2f'
             },
-            color = 'GIRO CLUSTER',
+            color = 'GIRO',
             color_discrete_map = color_discrete_map,
             title = '🔍 Brecha por Local – Real vs Predicho vs Mercado',
             labels = {
@@ -308,6 +307,7 @@ if 'df_input' in locals():
         fig_local.update_traces(marker = dict(size = 10))
         fig_local.update_layout(showlegend = True)
         st.plotly_chart(fig_local, use_container_width = True)
+
 
 
 
