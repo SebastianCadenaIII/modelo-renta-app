@@ -85,7 +85,7 @@ else:
         with col5:
             fecha_fin = st.date_input('FECHA_FIN', value = datetime.today())
 
-        mxn_m2 = st.number_input('MXN_POR_M2 (opcional)', min_value = 0.0, step = 10.0)
+        mxn_m2 = st.number_input('MXN_POR_M2 ', min_value = 0.0, step = 10.0)
         enviar = st.form_submit_button('Agregar entrada')
 
     if enviar:
@@ -311,6 +311,7 @@ if 'df_input' in locals():
         fig_local.update_traces(marker = dict(size = 10))
         fig_local.update_layout(showlegend = True)
         st.plotly_chart(fig_local, use_container_width = True)
+
 
 
 
