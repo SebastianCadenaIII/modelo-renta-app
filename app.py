@@ -243,13 +243,17 @@ if 'df_input' in locals():
     if len(df_vigentes) > 1:
         group = df_vigentes.groupby('PLAZA')
     
-        df_plaza = group.agg({
-            'SUPERFICIE': 'sum',
-            'MESES_RESTANTES': lambda x: np.average(x, weights = df_vigentes.loc[x.index, 'SUPERFICIE']),
-            'MXN_POR_M2': lambda x: np.average(x, weights = df_vigentes.loc[x.index, 'SUPERFICIE']),
-            'PREDICCIÓN_MXN_POR_M2': lambda x: np.average(x, weights = df_vigentes.loc[x.index, 'SUPERFICIE']),
-            'PORTFOLIO': 'first'
-        }).reset_index()
+        # Agrupación por PLAZA (calcular por separado)
+        group = df_vigentes.groupby('PLAZA')
+        
+        df_plaza = pd.DataFrame({
+            'PLAZA': group.size().index,
+            'SUPERFICIE': group['SUPERFICIE'].sum().values,
+            'MESES_RESTANTES': group.apply(lambda g: np.average(g['MESES_RESTANTES'], weights = g['SUPERFICIE'])).values,
+            'MXN_POR_M2': group.apply(lambda g: np.average(g['MXN_POR_M2'], weights = g['SUPERFICIE'])).values,
+            'PREDICCIÓN_MXN_POR_M2': group.apply(lambda g: np.average(g['PREDICCIÓN_MXN_POR_M2'], weights = g['SUPERFICIE'])).values,
+            'PORTFOLIO': group['PORTFOLIO'].first().values
+        })
     
         df_plaza['Delta PRX ponderado (1 - modelo / real)'] = 1 - (df_plaza['PREDICCIÓN_MXN_POR_M2'] / df_plaza['MXN_POR_M2'])
         df_plaza['COLOR_GROUP'] = np.where(df_plaza['PORTFOLIO'] == 'CONQUER', 'CONQUER', 'OTHER')
@@ -307,6 +311,7 @@ if 'df_input' in locals():
         fig_local.update_traces(marker = dict(size = 10))
         fig_local.update_layout(showlegend = True)
         st.plotly_chart(fig_local, use_container_width = True)
+
 
 
 
